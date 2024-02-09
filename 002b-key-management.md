@@ -21,46 +21,50 @@ For this reason, we wish to clearly define a strategy for best practices.
 ## Requirements
 
 1. All private keys must be generated and securely stored on YubiKeys.
-  * Our assumptions 1 and 2 make it almost impossible to generate a private key on a normal computer.
-    For example, even if a network-isolated virtual machine is used for that, the host most likely was connected to the internet at one point; therefore host OS and the hypervisor may already be compromised.
-  * Even if a totally secure air-gapped computer was used for private key generation, the fact that the private key is known to the user means that we should maintain _and enforce_ the strict endpoint security.
-    Enforcing it typically implies some kind of "spy" software installed on computers used for work.
-    I don't think we want that. Using a YubiKey for key generation means that we have it without knowing it; the endpoint security can rely on trust.
-  * Due to assumption 3, signing should require a physical button tap, in addition to entering a password.
-  * Due to assumption 4, everyone should have an empty spare YubiKey to avoid long job disruptions.
+
+- Our assumptions 1 and 2 make it almost impossible to generate a private key on a normal computer.
+  For example, even if a network-isolated virtual machine is used for that, the host most likely was connected to the internet at one point; therefore host OS and the hypervisor may already be compromised.
+- Even if a totally secure air-gapped computer was used for private key generation, the fact that the private key is known to the user means that we should maintain _and enforce_ the strict endpoint security.
+  Enforcing it typically implies some kind of "spy" software installed on computers used for work.
+  I don't think we want that. Using a YubiKey for key generation means that we have it without knowing it; the endpoint security can rely on trust.
+- Due to assumption 3, signing should require a physical button tap, in addition to entering a password.
+- Due to assumption 4, everyone should have an empty spare YubiKey to avoid long job disruptions.
+
 2. All public keys must be known to several parties (GitHub, PGP key servers, colleagues).
-  * For example, suppose one's GitHub account is compromised.
-    In that case, an attacker can replace the PGP key in account settings with their own and make a signed commit. `ci-bot` should check that not only commit is verified by GitHub, but also that signature can be verified with one of the keys set during bot's build process.
-    That would require an attacked to compromise both GitHub account and build system.
+
+- For example, suppose one's GitHub account is compromised.
+  In that case, an attacker can replace the PGP key in account settings with their own and make a signed commit. `ci-bot` should check that not only commit is verified by GitHub, but also that signature can be verified with one of the keys set during bot's build process.
+  That would require an attacked to compromise both GitHub account and build system.
+
 3. All git commits must be signed by our keys.
-  * That prevents the trivial impersonation of the commit's author and committer.
+
+- That prevents the trivial impersonation of the commit's author and committer.
 
 ## Scope
 
-* Key generation and basic distribution.
-* Git commit signing.
-* GitHub flow.
+- Key generation and basic distribution.
+- Git commit signing.
+- GitHub flow.
 
 ## Design
 
 ### Required hardware and software
 
-* YubiKey 5 with firmware [5.2.3+](https://support.yubico.com/hc/en-us/articles/360016649139-YubiKey-5-2-3-Enhancements-to-OpenPGP-3-4-Support).
+- YubiKey 5 with firmware [5.2.3+](https://support.yubico.com/hc/en-us/articles/360016649139-YubiKey-5-2-3-Enhancements-to-OpenPGP-3-4-Support).
   Tested with firmware 5.2.7.
-* Linux or macOS.
-* GnuPG v2. Tested with version 2.3.1.
-  * macOS: `brew install gnupg`.
-* PIN entry program:
-  * macOS: `brew install pinentry-mac`.
-  * Linux: TODO?
-* Git.
-* If an older GnuPG is used, the [`ykman` command line tool](https://developers.yubico.com/yubikey-manager/) might be needed.
-  * It may be installed separately:
-    * macOS: `brew install ykman`.
-    * Linux: TODO?
-  * or as a part of [YubiKey Manager GUI program](https://www.yubico.com/support/download/yubikey-manager/):
-    * macOS `brew install yubico-yubikey-manager`.
-    * Linux: TODO?
+- Linux or macOS.
+- GnuPG v2. Tested with version 2.3.1.
+  - macOS: `brew install gnupg`.
+  - Fedora: `dnf install gnupg2`
+- PIN entry program:
+  - macOS: `brew install pinentry-mac`.
+- Git.
+- If an older GnuPG is used, the [`ykman` command line tool](https://developers.yubico.com/yubikey-manager/) might be needed.
+  - It may be installed separately:
+    - macOS: `brew install ykman`.
+  - or as a part of [YubiKey Manager GUI program](https://www.yubico.com/support/download/yubikey-manager/):
+    - macOS `brew install yubico-yubikey-manager`.
+    - Fedora: `dnf install yubikey-personalization-gui`
 
 ### Key generation and basic distribution
 
@@ -103,6 +107,13 @@ gpg: Note: This command destroys all keys stored on the card!
 
 Continue? (y/N) y
 Really do a factory reset? (enter "yes") yes
+```
+
+On Fedora 38 the card was not detected until I disabled smart card integration:
+
+```bash
+echo disable-ccid >> ~/.gnupg/scdaemon.conf
+systemctl restart pcscd
 ```
 
 3. Set PIN and Admin PIN:
@@ -296,7 +307,6 @@ gpg/card> quit
 
 Check `Key attributes`, `UIF setting`, keys.
 
-
 8. Export your public key.
    Somewhat surprisingly, YubiKey does not store it, and it is required for working on another computer.
 
@@ -378,11 +388,13 @@ Check that private part stubs were imported as well by calling `gpg --list-secre
 9. Configure GnuPG to use pinentry program:
 
 On macOS:
+
 ```
 $ echo 'pinentry-program /usr/local/bin/pinentry-mac' >> ~/.gnupg/gpg-agent.conf
 ```
 
 On macOS M1:
+
 ```
 $ echo 'pinentry-program /opt/homebrew/bin/pinentry-mac' >> ~/.gnupg/gpg-agent.conf
 ```
@@ -439,7 +451,7 @@ debug1: Remote connections from /run/user/0/gnupg/S.gpg-agent:-2 forwarded to lo
 debug1: remote forward success for: listen /run/user/0/gnupg/S.gpg-agent:-2, connect /Users/aleksi/.gnupg/S.gpg-agent.extra:-2
 ```
 
-14.  Add your public key to GitHub account [there](https://github.com/settings/keys).
+14. Add your public key to GitHub account [there](https://github.com/settings/keys).
 
 ### Git commit signing
 
